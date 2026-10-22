@@ -129,6 +129,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private TextView btnWifi;
     private TextView shamsiDate;
     private boolean shamsi;
+    private TextView prayerLine;
+    private double prayerLat = Double.NaN, prayerLon;
     private String vpnApp;
     private SpringAnimation springX, springY;
     private float glassTargetX, glassTargetY;
@@ -231,6 +233,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         @Override
         public void run() {
             updateShamsiDate();
+            updatePrayerTimes();
             updateWifiLabel();
             refreshPlacesIfDue();
             handler.postDelayed(this, MINUTE_MS);
@@ -298,6 +301,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             TextView date = findViewById(R.id.date);
             date.setTextSize(11f);
             date.setPadding(0, (int) (4 * density), 0, 0);
+        }
+        prayerLine = findViewById(R.id.prayerTimes);
+        if (!Double.isNaN(cfg.prayerLat)) {
+            prayerLat = cfg.prayerLat;
+            prayerLon = cfg.prayerLon;
+            prayerLine.setVisibility(View.VISIBLE);
         }
         // Beside the clock, the date sits on the digits' baseline, and AM/PM rests halfway between
         // the top of the digits and the top of the date, its letters' foot on that line.
@@ -669,6 +678,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         resuming = true;
         reloadApps(true);
         updateShamsiDate();
+        updatePrayerTimes();
         updateWifiLabel();
         updateInputsButton();
         startWallpaperRotation();
@@ -1460,6 +1470,26 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void updateShamsiDate() {
         if (shamsi) shamsiDate.setText(Shamsi.today());
+    }
+
+    /** The five prayer times in one line, the next one brighter; recomputed every minute (it is cheap). */
+    private void updatePrayerTimes() {
+        if (Double.isNaN(prayerLat)) return;
+        int[] t = PrayerTimes.today(prayerLat, prayerLon);
+        java.util.Calendar now = java.util.Calendar.getInstance();
+        int next = PrayerTimes.next(t, now.get(java.util.Calendar.HOUR_OF_DAY) * 60 + now.get(java.util.Calendar.MINUTE));
+        boolean h24 = android.text.format.DateFormat.is24HourFormat(this);
+        android.text.SpannableStringBuilder sb = new android.text.SpannableStringBuilder();
+        for (int i = 0; i < t.length; i++) {
+            if (i > 0) sb.append("   ");
+            int start = sb.length();
+            sb.append(PrayerTimes.DEFAULT_NAMES[i]).append(' ').append(PrayerTimes.format(t[i], h24));
+            if (i == next) {
+                sb.setSpan(new android.text.style.ForegroundColorSpan(0xFFFFFFFF), start, sb.length(), 0);
+                sb.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD), start, sb.length(), 0);
+            }
+        }
+        prayerLine.setText(sb);
     }
 
     /** Shows the Wi-Fi network name on the button when we can read it, otherwise the connection type. */
