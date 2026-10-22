@@ -1,0 +1,46 @@
+# Panasonic 4KTV-3MUP (ro.product.manufacturer MOKA, device R4_GTV, Realtek RTD2851), Google TV build of
+# Android TV 14 (API 34), build UKR1.260308, security patch 2026-04. Malaysia unit.
+# Not the same platform as examples/panasonic-4ktv-jup (MediaTek): only the Google packages carry over.
+#
+# Apply:   TV_HOST=<tv ip> tools/disable.sh examples/panasonic-4ktv-3mup/debloat.txt
+# Undo:    TV_HOST=<tv ip> tools/restore.sh examples/panasonic-4ktv-3mup/debloat.txt com.google.android.apps.tv.launcherx
+# Windows: tools\restore.ps1 -TvHost <tv ip> examples\panasonic-4ktv-3mup\debloat.txt com.google.android.apps.tv.launcherx
+# Everything is DISABLED, not uninstalled. Comment out any line you want to keep.
+#
+# Stock launcher: com.google.android.apps.tv.launcherx. HOME claimants: launcherx, setupwraith
+# (.RecoveryActivity) and com.android.tv.settings FallbackHome. setupwraith takes Home once launcherx is
+# disabled: the first install attempt rolled itself back until setupwraith was disabled (listed below).
+#
+# Tested 2026-10-23 on one TV, in three batches; after each the owner checked Home, the remote, Wi-Fi and
+# an HDMI input. A deliberately short list: under a day of use when submitted.
+#
+# DO NOT DISABLE (load-bearing on this firmware):
+# com.realtek.tv* com.realtek.dtv com.realtek.atv com.realtek.isdb   # Live TV and tuners
+# com.realtek.tv.passthrough                                         # HDMI inputs
+# com.mk.service.tvmidware com.mk.tv.systemserver com.apps.sys       # MOKA TV middleware
+# com.apps.globalkeyhandler com.realtek.android.globalkeyhandler com.realtek.keyinterceptserver
+# com.apps.virtualkey com.apps.smartkey com.apps.bluetoothremote com.google.android.tv.remote.service
+#
+# Left on, purpose unclear: com.apps.esticker (holds AirPlay provisioning and hotword permissions),
+# com.apps.esticker3. Left on by choice: casting (mediashell), AirPlay, com.apps.scast, voice (katniss),
+# USB media player, OTA (com.apps.ota, com.realsil.ota), all streaming apps.
+
+# 1. Telemetry and backup leftovers
+com.google.android.feedback
+com.google.android.partnersetup
+com.android.htmlviewer
+com.android.backupconfirm
+com.android.sharedstoragebackup
+com.android.wallpaperbackup
+com.google.android.syncadapters.calendar
+com.android.providers.calendar
+
+# 2. Promo config and preloads
+com.realtek.leanbacklauncher.partnercustomizer   # launcher promo configuration
+com.google.android.play.games
+
+# 3. Setup wizard: takes Home from launcher/ otherwise. Re-enable before a factory reset (restore does).
+com.google.android.tungsten.setupwraith
+
+# Stock Google TV launcher, replaced by launcher/
+# com.google.android.apps.tv.launcherx   # launcher/build-and-install disables this one itself, after Home has moved

@@ -39,6 +39,7 @@ TV on one, add a line to its `debloat.txt` and it moves to section 1.
 | Hitachi 65QLEDSM20 (MTC, bangbae, MediaTek m7322), Australia | Android TV 11 | [`hitachi-65qledsm20`](../examples/hitachi-65qledsm20/) |
 | NVIDIA SHIELD TV Pro 2019 (P2897, mdarcy) | Android TV 11 | [`nvidia-shield-tv-pro-2019`](../examples/nvidia-shield-tv-pro-2019/) |
 | OnePlus TV (D00, Dubai) | Google TV 14 | [`oneplus-tv-dubai`](../examples/oneplus-tv-dubai/) |
+| Panasonic 4KTV-3MUP (MOKA, R4_GTV, Realtek RTD2851) | Google TV 14 | [`panasonic-4ktv-3mup`](../examples/panasonic-4ktv-3mup/) |
 | Panasonic 4KTV-JUP (Jupiter_PA, MediaTek) | Android TV 11 | [`panasonic-4ktv-jup`](../examples/panasonic-4ktv-jup/) |
 | Philips 50PUS8517/12 (TP Vision, PH1M_EA_9970A, MediaTek MT5895), Europe | Android TV 11 | [`philips-50pus8517`](../examples/philips-50pus8517/) |
 | Philips Smart 4K TV (Skyworth, eleonas, MediaTek), India | Google TV 14 | [`philips-smart-4k-google-tv`](../examples/philips-smart-4k-google-tv/) |
