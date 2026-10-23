@@ -42,7 +42,6 @@ is ignored, and a file that doesn't parse is ignored as a whole, so a theme can 
 | `wallpaper_seconds` | 5 to 86400 | Seconds between pictures; when set, it wins over `wallpaper_minutes` |
 | `wallpaper_minutes` | 0 to 1440 | Minutes between pictures when the theme has a `wallpapers/` folder; 0 changes only when Home starts. Default 30 |
 | `cache_clean_days` | 0 to 90 | Days between clearing the TV's app caches, which the TV does itself (default 15); `0` turns it off. See [docs/cache-clean.md](../docs/cache-clean.md) |
-| `prayer_times` | object | `{"lat": 3.139, "lon": 101.687}`: a line under the clock with the day's five prayer times (Subuh, Zohor, Asar, Maghrib, Isyak), the next one brighter. Computed on the TV with JAKIM's parameters (18 degrees, Shafi'i Asar, 2 minutes ihtiyat), no network; latitudes up to 48 degrees |
 | `places` | bool | Pictures of places to visit (Bing's daily images, no key), renewed weekly with last week's deleted, each named with its country and a few lines about it; pictures with people in them are skipped. On by default, and they replace the theme's own pictures. `false`: the theme's own pictures, and the launcher never goes online |
 
 ## Wallpapers
@@ -67,3 +66,16 @@ Android 10 is the known case. The default, `false`, keeps the normal motion.
 Open a PR with a new folder here, a one-line row in the table above and a screenshot from a real TV
 in the PR description. Keep the dock list generic (the big streaming apps) unless the theme is for a
 specific TV, and say which TV you tried it on.
+
+## Prayer times (Malaysia)
+
+A `prayer_times.json` in the theme folder shows a glass card under the clock with the day's five prayer
+times (Subuh, Zohor, Asar, Maghrib, Isyak) exactly as JAKIM publishes them, the next one lit. The launcher
+stays offline: your computer downloads the year from e-Solat and the theme tools push it with the theme.
+
+```bash
+python3 tools/esolat.py JHR02 themes/mine     # your JAKIM zone code; run again early each January
+TV_HOST=<tv ip> tools/theme.sh themes/mine
+```
+
+On a day the file does not cover (a new year), the card hides itself.

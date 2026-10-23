@@ -20,7 +20,7 @@ DIR=/sdcard/Android/data/$PKG/files
 tv() { "$PY" -I tv.py "$@"; }
 
 if [ "${1:-}" = --reset ]; then
-  tv "rm -rf $DIR/config.json $DIR/wallpaper.jpg $DIR/wallpapers; am force-stop $PKG; am start -n $PKG/.MainActivity >/dev/null; echo reset" | tail -n 1
+  tv "rm -rf $DIR/config.json $DIR/wallpaper.jpg $DIR/wallpapers $DIR/prayer_times.json; am force-stop $PKG; am start -n $PKG/.MainActivity >/dev/null; echo reset" | tail -n 1
   exit 0
 fi
 THEME="${THEME_ARG:?usage: theme.sh <theme folder> | --reset}"
@@ -43,6 +43,12 @@ if [ -d "$THEME/wallpapers" ]; then
     [ -f "$f" ] || continue
     "$PY" -I b64push.py "$f" "$DIR/wallpapers/$(basename "$f")" | tail -n 1
   done
+fi
+# JAKIM's prayer times for the year (tools/esolat.py), shown in a card under the clock.
+if [ -f "$THEME/prayer_times.json" ]; then
+  "$PY" -I b64push.py "$THEME/prayer_times.json" "$DIR/prayer_times.json" | tail -n 1
+else
+  tv "rm -f $DIR/prayer_times.json" >/dev/null
 fi
 tv "am force-stop $PKG; am start -n $PKG/.MainActivity >/dev/null; echo applied" | tail -n 1
 echo "Theme $(basename "$THEME") is on the TV. Undo with: tools/theme.sh --reset"

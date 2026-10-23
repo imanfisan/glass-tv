@@ -21,7 +21,7 @@ $pkg = 'com.gathin.tvhome'
 $dir = "/sdcard/Android/data/$pkg/files"
 
 if ($Reset) {
-    & $py -I tv.py "rm -rf $dir/config.json $dir/wallpaper.jpg $dir/wallpapers; am force-stop $pkg; am start -n $pkg/.MainActivity >/dev/null; echo reset"
+    & $py -I tv.py "rm -rf $dir/config.json $dir/wallpaper.jpg $dir/wallpapers $dir/prayer_times.json; am force-stop $pkg; am start -n $pkg/.MainActivity >/dev/null; echo reset"
     exit 0
 }
 if (-not $Theme) { throw 'usage: theme.ps1 <theme folder> | -Reset' }
@@ -42,5 +42,8 @@ if (Test-Path $walls -PathType Container) {
         & $py -I b64push.py $_.FullName "$dir/wallpapers/$($_.Name)" | Select-Object -Last 1
     }
 }
+# JAKIM's prayer times for the year (tools\esolat.py), shown in a card under the clock.
+$prayer = Join-Path $Theme 'prayer_times.json'
+if (Test-Path $prayer) { & $py -I b64push.py $prayer "$dir/prayer_times.json" | Select-Object -Last 1 } else { & $py -I tv.py "rm -f $dir/prayer_times.json" | Out-Null }
 & $py -I tv.py "am force-stop $pkg; am start -n $pkg/.MainActivity >/dev/null; echo applied"
 Write-Host "Theme $(Split-Path $Theme -Leaf) is on the TV. Undo with: tools\theme.ps1 -TvHost $TvHost -Reset"

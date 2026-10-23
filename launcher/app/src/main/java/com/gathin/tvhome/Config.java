@@ -64,8 +64,6 @@ final class Config {
     final boolean places;
     /** Days between clearing the TV's app caches (see CacheCleaner); 0 never does. */
     final int cacheCleanDays;
-    /** Where to compute prayer times for ("prayer_times": {"lat", "lon"}); NaN keeps the line hidden. */
-    final double prayerLat, prayerLon;
     /** Whether the overlay file was present and parsed. */
     final boolean overlayApplied;
 
@@ -76,7 +74,7 @@ final class Config {
                    boolean showHomeSettingsShortcut, boolean showNetworkPill, boolean showLiveTv,
                    int backgroundColor,
                    File wallpaper, List<File> wallpapers, long wallpaperIntervalMs,
-                   boolean places, int cacheCleanDays, double prayerLat, double prayerLon, boolean overlayApplied) {
+                   boolean places, int cacheCleanDays, boolean overlayApplied) {
         this.dockApps = Collections.unmodifiableList(dockApps);
         this.hiddenApps = Collections.unmodifiableList(hiddenApps);
         this.liveTvPackage = liveTvPackage;
@@ -99,8 +97,6 @@ final class Config {
         this.wallpaperIntervalMs = wallpaperIntervalMs;
         this.places = places;
         this.cacheCleanDays = cacheCleanDays;
-        this.prayerLat = prayerLat;
-        this.prayerLon = prayerLon;
         this.overlayApplied = overlayApplied;
     }
 
@@ -175,21 +171,10 @@ final class Config {
         int cacheCleanDays = json != null ? integer(json, "cache_clean_days", CacheCleaner.DEFAULT_DAYS, 0, 90)
                 : CacheCleaner.DEFAULT_DAYS;
 
-        double prayerLat = Double.NaN, prayerLon = Double.NaN;
-        JSONObject prayer = json != null ? json.optJSONObject("prayer_times") : null;
-        if (prayer != null && prayer.opt("lat") instanceof Number && prayer.opt("lon") instanceof Number) {
-            double lat = prayer.optDouble("lat"), lon = prayer.optDouble("lon");
-            // Past about 48 degrees the sun stays too high in summer for the twilight angles to work.
-            if (Math.abs(lat) <= 48 && Math.abs(lon) <= 180) {
-                prayerLat = lat;
-                prayerLon = lon;
-            }
-        }
-
         return new Config(dock, hidden, liveTv, liveTvAction, panelService, panelAction, inputAction,
                 Math.max(1, columns), Math.max(0, rowsBelow), shamsi, moduleCards, reducedMotion,
                 vpn, homeSettings, networkPill, liveTvRow, background, wallpaper, wallpapers, wallpaperIntervalMs,
-                places, cacheCleanDays, prayerLat, prayerLon, applied);
+                places, cacheCleanDays, applied);
     }
 
     /** Reads and parses the overlay; any problem means "no overlay", never a crash on the home screen. */

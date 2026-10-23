@@ -129,8 +129,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private TextView btnWifi;
     private TextView shamsiDate;
     private boolean shamsi;
-    private TextView prayerLine;
-    private double prayerLat = Double.NaN, prayerLon;
+    private android.widget.LinearLayout prayerCard;
+    private PrayerTimes prayerTimes;
+    private final TextView[][] prayerCells = new TextView[PrayerTimes.NAMES.length][2];
     private String vpnApp;
     private SpringAnimation springX, springY;
     private float glassTargetX, glassTargetY;
@@ -302,12 +303,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             date.setTextSize(11f);
             date.setPadding(0, (int) (4 * density), 0, 0);
         }
-        prayerLine = findViewById(R.id.prayerTimes);
-        if (!Double.isNaN(cfg.prayerLat)) {
-            prayerLat = cfg.prayerLat;
-            prayerLon = cfg.prayerLon;
-            prayerLine.setVisibility(View.VISIBLE);
-        }
+        prayerCard = findViewById(R.id.prayerCard);
+        prayerTimes = PrayerTimes.load(Config.dir(this) != null ? new File(Config.dir(this), PrayerTimes.FILE_NAME) : null);
+        if (prayerTimes != null) buildPrayerCard();
         // Beside the clock, the date sits on the digits' baseline, and AM/PM rests halfway between
         // the top of the digits and the top of the date, its letters' foot on that line.
         TextView clock = findViewById(R.id.clock), amPm = findViewById(R.id.ampm), dateLine = findViewById(R.id.date);
@@ -1472,24 +1470,61 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (shamsi) shamsiDate.setText(Shamsi.today());
     }
 
-    /** The five prayer times in one line, the next one brighter; recomputed every minute (it is cheap). */
+    /** The card under the clock: the same glass as the top-bar panels, one column per prayer. */
+    private void buildPrayerCard() {
+        prayerCard.setBackground(new GlassDrawable(prayerCard, 18 * density, density, null, 0.5f));
+        android.graphics.Typeface outfit = androidx.core.content.res.ResourcesCompat.getFont(this, R.font.outfit);
+        for (int i = 0; i < PrayerTimes.NAMES.length; i++) {
+            android.widget.LinearLayout col = new android.widget.LinearLayout(this);
+            col.setOrientation(android.widget.LinearLayout.VERTICAL);
+            col.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+            col.setPadding((int) (16 * density), (int) (8 * density), (int) (16 * density), (int) (9 * density));
+            TextView name = new TextView(this), time = new TextView(this);
+            name.setText(PrayerTimes.NAMES[i]);
+            name.setTextSize(11f);
+            name.setLetterSpacing(0.12f);
+            name.setAllCaps(true);
+            time.setTextSize(22f);
+            time.setPadding(0, (int) (3 * density), 0, 0);
+            for (TextView t : new TextView[]{name, time}) {
+                t.setTypeface(outfit);
+                t.setIncludeFontPadding(false);
+                t.setSingleLine(true);
+                col.addView(t);
+            }
+            name.setFontVariationSettings("'wght' 500");
+            prayerCells[i][0] = name;
+            prayerCells[i][1] = time;
+            prayerCard.addView(col);
+        }
+        prayerCard.setVisibility(View.VISIBLE);
+    }
+
+    /** Today's JAKIM times, the next prayer lit; the card hides on a day the file does not cover. */
     private void updatePrayerTimes() {
-        if (Double.isNaN(prayerLat)) return;
-        int[] t = PrayerTimes.today(prayerLat, prayerLon);
+        if (prayerTimes == null) return;
         java.util.Calendar now = java.util.Calendar.getInstance();
+        int[] t = prayerTimes.on(now);
+        prayerCard.setVisibility(t == null ? View.GONE : View.VISIBLE);
+        if (t == null) return;
         int next = PrayerTimes.next(t, now.get(java.util.Calendar.HOUR_OF_DAY) * 60 + now.get(java.util.Calendar.MINUTE));
         boolean h24 = android.text.format.DateFormat.is24HourFormat(this);
-        android.text.SpannableStringBuilder sb = new android.text.SpannableStringBuilder();
         for (int i = 0; i < t.length; i++) {
-            if (i > 0) sb.append("   ");
-            int start = sb.length();
-            sb.append(PrayerTimes.DEFAULT_NAMES[i]).append(' ').append(PrayerTimes.format(t[i], h24));
-            if (i == next) {
-                sb.setSpan(new android.text.style.ForegroundColorSpan(0xFFFFFFFF), start, sb.length(), 0);
-                sb.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD), start, sb.length(), 0);
-            }
+            boolean lit = i == next;
+            View col = (View) prayerCells[i][0].getParent();
+            col.setBackground(lit ? nextPrayerBackground() : null);
+            prayerCells[i][0].setTextColor(lit ? 0xFFFFFFFF : 0x99FFFFFF);
+            prayerCells[i][1].setTextColor(lit ? 0xFFFFFFFF : 0xCCFFFFFF);
+            prayerCells[i][1].setFontVariationSettings(lit ? "'wght' 600" : "'wght' 400");
+            prayerCells[i][1].setText(PrayerTimes.format(t[i], h24));
         }
-        prayerLine.setText(sb);
+    }
+
+    private android.graphics.drawable.GradientDrawable nextPrayerBackground() {
+        android.graphics.drawable.GradientDrawable d = new android.graphics.drawable.GradientDrawable();
+        d.setColor(0x2EFFFFFF);
+        d.setCornerRadius(14 * density);
+        return d;
     }
 
     /** Shows the Wi-Fi network name on the button when we can read it, otherwise the connection type. */

@@ -1,32 +1,32 @@
 package com.gathin.tvhome;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNull;
 
 import org.junit.Test;
 
 public class PrayerTimesTest {
 
-    /** Kuala Lumpur, 23 October 2026, against JAKIM's published e-Solat table for zone WLY01. */
+    /** The line tools/esolat.py writes for Johor Bahru (JHR02) on 23 October 2026, as JAKIM publishes it. */
     @Test
-    public void kualaLumpurMatchesJakimWithinTwoMinutes() {
-        int[] t = PrayerTimes.minutes(2026, 10, 23, 3.139, 101.687, 8);
-        int[] jakim = {5 * 60 + 49, 13 * 60, 16 * 60 + 19, 19 * 60, 20 * 60 + 10};
-        for (int i = 0; i < 5; i++) {
-            assertTrue(PrayerTimes.DEFAULT_NAMES[i] + " was " + PrayerTimes.format(t[i], true),
-                    Math.abs(t[i] - jakim[i]) <= 2);
-        }
+    public void readsJakimDay() {
+        assertArrayEquals(new int[]{5 * 60 + 39, 12 * 60 + 52, 16 * 60 + 9, 18 * 60 + 53, 20 * 60 + 3},
+                PrayerTimes.parseDay("05:39 12:52 16:09 18:53 20:03"));
     }
 
     @Test
-    public void timesAreInOrder() {
-        int[] t = PrayerTimes.minutes(2026, 6, 21, 3.139, 101.687, 8);
-        for (int i = 1; i < 5; i++) assertTrue(t[i] > t[i - 1]);
+    public void refusesAnythingElse() {
+        assertNull(PrayerTimes.parseDay(""));
+        assertNull(PrayerTimes.parseDay("05:39 12:52 16:09 18:53"));
+        assertNull(PrayerTimes.parseDay("5:39 12:52 16:09 18:53 20:03"));
+        assertNull(PrayerTimes.parseDay("05:39 12:52 16:09 18:53 24:03"));
+        assertNull(PrayerTimes.parseDay("05:39 12:52 16:9x 18:53 20:03"));
     }
 
     @Test
     public void nextPrayer() {
-        int[] t = {340, 777, 963, 1139, 1208};
+        int[] t = {339, 772, 969, 1133, 1203};
         assertEquals(0, PrayerTimes.next(t, 0));
         assertEquals(2, PrayerTimes.next(t, 800));
         assertEquals(-1, PrayerTimes.next(t, 1300));
