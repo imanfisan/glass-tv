@@ -147,7 +147,8 @@ if ! healthy start; then
 fi
 enable_service() {   # appends to enabled_accessibility_services without dropping other services
   svc=com.gathin.tvhome/.$1
-  "$PY" -I ../tools/tv.py "s=\$(settings get secure enabled_accessibility_services); case \"\$s\" in *$1*) ;; null|'') settings put secure enabled_accessibility_services $svc ;; *) settings put secure enabled_accessibility_services \"\$s:$svc\" ;; esac; settings put secure accessibility_enabled 1; echo $1 enabled"
+  # Taken out and put back even when listed: after a reinstall Android keeps the setting but unbinds the service.
+  "$PY" -I ../tools/tv.py "s=\$(settings get secure enabled_accessibility_services | sed 's#$svc##; s#::#:#; s#^:##; s#:\$##'); case \"\$s\" in null|'') settings put secure enabled_accessibility_services ''; sleep 1; settings put secure enabled_accessibility_services $svc ;; *) settings put secure enabled_accessibility_services \"\$s\"; sleep 1; settings put secure enabled_accessibility_services \"\$s:$svc\" ;; esac; settings put secure accessibility_enabled 1; echo $1 enabled"
 }
 if [ "${KEEP_STOCK_HOME:-0}" = 1 ]; then
   # The stock launcher stays Home; the service brings Glass TV up over it when Home is pressed.

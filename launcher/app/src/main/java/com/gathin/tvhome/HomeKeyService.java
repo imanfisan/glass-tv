@@ -26,9 +26,14 @@ public class HomeKeyService extends AccessibilityService {
 
     private static final long DOUBLE_PRESS_MS = 700;
     private static final long STAY_MS = 2500;
-    private static final java.util.Set<String> STOCK_LAUNCHERS = new java.util.HashSet<>(java.util.Arrays.asList(
-            "com.google.android.apps.tv.launcherx", "com.google.android.tvlauncher",
-            "com.google.android.leanbacklauncher"));
+    /**
+     * The stock home screens' own activities. Only these are covered: the stock launchers also own the
+     * Settings panel and its PIN prompt (Google TV), which must stay in front.
+     */
+    private static final java.util.Set<String> STOCK_HOMES = new java.util.HashSet<>(java.util.Arrays.asList(
+            "com.google.android.apps.tv.launcherx.home.HomeActivity",
+            "com.google.android.tvlauncher.MainActivity",
+            "com.google.android.leanbacklauncher.MainActivity"));
 
     /** Scancodes of remote buttons that should open Settings (config.xml, settings_key_scancodes). */
     private int[] settingsScancodes = new int[0];
@@ -100,8 +105,8 @@ public class HomeKeyService extends AccessibilityService {
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
         if (event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
-        CharSequence pkg = event.getPackageName();
-        if (pkg == null || !STOCK_LAUNCHERS.contains(pkg.toString())) return;
+        CharSequence cls = event.getClassName();
+        if (cls == null || !STOCK_HOMES.contains(cls.toString())) return;
         long now = SystemClock.uptimeMillis();
         if (now - lastBounce < STAY_MS) return;
         lastBounce = now;

@@ -106,7 +106,8 @@ function Test-Healthy([string]$Stage) {
 function Enable-Service([string]$Name) {
     $svc = "com.gathin.tvhome/.$Name"
     # On stdin, like Test-Healthy: the quotes in this command would not survive PowerShell 5.1 as an argument.
-    ('s=$(settings get secure enabled_accessibility_services); case "$s" in *' + $Name + '*) ;; null|"") settings put secure enabled_accessibility_services ' + $svc + ' ;; *) settings put secure enabled_accessibility_services "$s:' + $svc + '" ;; esac; settings put secure accessibility_enabled 1; echo ' + $Name + ' enabled') | & $py -I ..\tools\tv.py --batch | Select-Object -Last 1
+    # Taken out and put back even when listed: after a reinstall Android keeps the setting but unbinds the service.
+    ('s=$(settings get secure enabled_accessibility_services | sed "s#' + $svc + '##; s#::#:#; s#^:##; s#:\$##"); case "$s" in null|"") settings put secure enabled_accessibility_services ""; sleep 1; settings put secure enabled_accessibility_services ' + $svc + ' ;; *) settings put secure enabled_accessibility_services "$s"; sleep 1; settings put secure enabled_accessibility_services "$s:' + $svc + '" ;; esac; settings put secure accessibility_enabled 1; echo ' + $Name + ' enabled') | & $py -I ..\tools\tv.py --batch | Select-Object -Last 1
 }
 & $py -I ..\tools\b64push.py $apk /data/local/tmp/tvhome.apk
 if ($LASTEXITCODE -ne 0) { throw 'APK upload failed' }
