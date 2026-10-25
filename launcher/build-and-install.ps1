@@ -6,11 +6,15 @@
 #        The stock launcher is detected from the TV when -StockLauncher is not given.
 #        [-InputKeyService]   remote's Input button opens the input switcher (Google TV); re-pass on every install
 #        [-HomeKeyService]    remotes whose Home button sends KEYCODE_ALL_APPS (Xiaomi sticks)
+#        [-KeepStockHome]     the stock launcher stays the system's Home; Glass TV opens over it on Home and
+#                             after boot (HomeKeyService). Nothing is disabled, so a Google TV update that
+#                             re-enables the setup wizard cannot take Home. Press Home twice for the stock one.
 param(
     [string]$TvHost = $env:TV_HOST,
     [string]$StockLauncher = '',
     [switch]$InputKeyService,
-    [switch]$HomeKeyService
+    [switch]$HomeKeyService,
+    [switch]$KeepStockHome
 )
 $ErrorActionPreference = 'Stop'
 # Pipe plain UTF-8 to native commands; the default here prepends a BOM that corrupts the first command.
@@ -44,6 +48,8 @@ if ([int]"$sdk".Trim() -lt 26) { throw "this TV runs Android API $("$sdk".Trim()
 if ("$(& $py -I ..\tools\tv.py 'getprop ro.product.manufacturer' | Select-Object -Last 1)".Trim() -eq 'Amazon') {
     throw 'this is a Fire TV. Fire OS takes Home back from any other launcher, so the Glass TV home screen cannot stay. Debloating still works (tools\disable.ps1). Nothing was changed.'
 }
+# -KeepStockHome: nothing the TV needs is disabled (see examples/panasonic-4ktv-3mup).
+if ($KeepStockHome) { $StockLauncher = 'none' }
 # Where Home goes now, so a failed install can put it back exactly.
 $origHome = "$(& $py -I ..\tools\tv.py 'cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME' | Select-Object -Last 1)".Trim()
 if (-not $StockLauncher) {
@@ -96,6 +102,12 @@ function Test-Healthy([string]$Stage) {
     $p = $s.Split('|', 3)
     return ($p.Count -eq 3 -and $p[0] -and $p[0] -eq $p[1] -and $p[2] -like '*com.gathin.tvhome*')
 }
+# Optional accessibility services, appended to enabled_accessibility_services without dropping others.
+function Enable-Service([string]$Name) {
+    $svc = "com.gathin.tvhome/.$Name"
+    # On stdin, like Test-Healthy: the quotes in this command would not survive PowerShell 5.1 as an argument.
+    ('s=$(settings get secure enabled_accessibility_services); case "$s" in *' + $Name + '*) ;; null|"") settings put secure enabled_accessibility_services ' + $svc + ' ;; *) settings put secure enabled_accessibility_services "$s:' + $svc + '" ;; esac; settings put secure accessibility_enabled 1; echo ' + $Name + ' enabled') | & $py -I ..\tools\tv.py --batch | Select-Object -Last 1
+}
 & $py -I ..\tools\b64push.py $apk /data/local/tmp/tvhome.apk
 if ($LASTEXITCODE -ne 0) { throw 'APK upload failed' }
 $out = & $py -I ..\tools\tv.py 'pm install -r /data/local/tmp/tvhome.apk; rm -f /data/local/tmp/tvhome.apk'
@@ -109,6 +121,10 @@ try {
     ) | & $py -I ..\tools\tv.py --batch
     # Check it really runs on this TV before the TV's own launcher is touched.
     if (-not (Test-Healthy 'start')) { throw 'Glass TV did not start properly on this TV (it is not in front, or it keeps restarting).' }
+    if ($KeepStockHome) {
+        # The stock launcher stays Home; the service brings Glass TV up over it when Home is pressed.
+        Enable-Service 'HomeKeyService'
+    } else {
     # Android 9 only accepts a component here; Android 10+ also takes a bare package name.
     @(
         $disableStock,
@@ -121,6 +137,7 @@ try {
         throw "Home resolves to '$homeNow', not to the new launcher. On Google TV this usually means com.google.android.tungsten.setupwraith also claims Home: add it to your debloat list (see README, Troubleshooting), apply it, then run this script again."
     }
     Write-Host "Home now resolves to $homeNow"
+    }
     # Press Home the way the remote does, and check Glass TV answers and stays up.
     & $py -I ..\tools\tv.py 'input keyevent KEYCODE_HOME' | Out-Null
     if (-not (Test-Healthy 'home')) { throw 'pressing Home did not bring up a working Glass TV.' }
@@ -128,12 +145,6 @@ try {
     Restore-Tv
     throw
 }
-# Optional accessibility services, appended to enabled_accessibility_services without dropping others.
-function Enable-Service([string]$Name) {
-    $svc = "com.gathin.tvhome/.$Name"
-    # On stdin, like Test-Healthy: the quotes in this command would not survive PowerShell 5.1 as an argument.
-    ('s=$(settings get secure enabled_accessibility_services); case "$s" in *' + $Name + '*) ;; null|"") settings put secure enabled_accessibility_services ' + $svc + ' ;; *) settings put secure enabled_accessibility_services "$s:' + $svc + '" ;; esac; settings put secure accessibility_enabled 1; echo ' + $Name + ' enabled') | & $py -I ..\tools\tv.py --batch | Select-Object -Last 1
-}
 if ($InputKeyService) { Enable-Service 'InputKeyService' }
-if ($HomeKeyService) { Enable-Service 'HomeKeyService' }
+if ($HomeKeyService -and -not $KeepStockHome) { Enable-Service 'HomeKeyService' }
 Write-Host 'Installed. Press Home on the remote to see it.'

@@ -11,6 +11,21 @@
 # (.RecoveryActivity) and com.android.tv.settings FallbackHome. setupwraith takes Home once launcherx is
 # disabled: the first install attempt rolled itself back until setupwraith was disabled (listed below).
 #
+# WARNING, seen 2026-10-25 on this TV: two days after the install, an update re-enabled setupwraith (and
+# play.games, feedback, partnersetup, calendar sync). Its .RecoveryActivity took Home again, and every press
+# of Home crashed the system and rebooted the TV to the Panasonic logo; HDMI, the TV tuner and the YouTube /
+# Netflix buttons kept working. The TV also came back on a new IP after the reboots, which hid that network
+# debugging was still on. Fixed over ADB at the new address: `pm enable --user 0
+# com.google.android.apps.tv.launcherx`, then `cmd package set-home-activity --user 0
+# com.google.android.apps.tv.launcherx/.home.HomeActivity`.
+#
+# So install Glass TV here with the stock launcher kept as the system's Home:
+#   launcher\build-and-install.ps1 -TvHost <tv ip> -KeepStockHome      (macOS/Linux: KEEP_STOCK_HOME=1)
+# HomeKeyService then brings Glass TV up over the Google TV home screen after boot and on every Home press
+# (this TV handles Home before accessibility services, so it watches for the stock screen instead); press
+# Home again within 2.5 s to stay on Google TV. Tested 2026-10-25: Home press and a reboot. Leave
+# setupwraith and launcherx enabled: the setupwraith line below is commented out for that reason.
+#
 # Tested 2026-10-23 on one TV, in three batches; after each the owner checked Home, the remote, Wi-Fi and
 # an HDMI input. A deliberately short list: under a day of use when submitted.
 #
@@ -39,8 +54,9 @@ com.android.providers.calendar
 com.realtek.leanbacklauncher.partnercustomizer   # launcher promo configuration
 com.google.android.play.games
 
-# 3. Setup wizard: takes Home from launcher/ otherwise. Re-enable before a factory reset (restore does).
-com.google.android.tungsten.setupwraith
+# 3. Setup wizard: NOT disabled. With launcher/ installed as Home it was needed, and an update re-enabled it
+#    into a reboot loop (see the header); with -KeepStockHome it can stay on.
+# com.google.android.tungsten.setupwraith
 
 # Stock Google TV launcher, replaced by launcher/
 # com.google.android.apps.tv.launcherx   # launcher/build-and-install disables this one itself, after Home has moved

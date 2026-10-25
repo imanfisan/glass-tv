@@ -33,6 +33,10 @@ if [ "$MAKER" = Amazon ]; then
   echo "ERROR: this is a Fire TV. Fire OS takes Home back from any other launcher, so the Glass TV home screen" >&2
   echo "cannot stay. Debloating still works (tools/disable.sh). Nothing was changed." >&2; exit 1
 fi
+# KEEP_STOCK_HOME=1: leave the TV's own launcher enabled and the system's Home; Glass TV opens over it
+# on Home and after boot through HomeKeyService. Nothing the TV needs is disabled, so an update that
+# re-enables the Google TV setup wizard cannot take Home (see examples/panasonic-4ktv-3mup).
+if [ "${KEEP_STOCK_HOME:-0}" = 1 ]; then STOCK_LAUNCHER=none; fi
 # Where Home goes now, so a failed install can put it back exactly.
 ORIG_HOME=$("$PY" -I ../tools/tv.py 'cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME' \
   | tail -n 1 | tr -d '\r')
@@ -141,6 +145,14 @@ if ! healthy start; then
   echo "ERROR: Glass TV did not start properly on this TV (it is not in front, or it keeps restarting)." >&2
   exit 1
 fi
+enable_service() {   # appends to enabled_accessibility_services without dropping other services
+  svc=com.gathin.tvhome/.$1
+  "$PY" -I ../tools/tv.py "s=\$(settings get secure enabled_accessibility_services); case \"\$s\" in *$1*) ;; null|'') settings put secure enabled_accessibility_services $svc ;; *) settings put secure enabled_accessibility_services \"\$s:$svc\" ;; esac; settings put secure accessibility_enabled 1; echo $1 enabled"
+}
+if [ "${KEEP_STOCK_HOME:-0}" = 1 ]; then
+  # The stock launcher stays Home; the service brings Glass TV up over it when Home is pressed.
+  enable_service HomeKeyService
+else
 printf '%s\n' \
   "$DISABLE_STOCK" \
   "cmd package set-home-activity --user 0 com.gathin.tvhome/.MainActivity" \
@@ -159,6 +171,7 @@ case "$HOME_NOW" in
     echo "your debloat list (see README, Troubleshooting), apply the list, then run this script again." >&2
     exit 1 ;;
 esac
+fi
 # Press Home the way the remote does, and check Glass TV answers and stays up.
 "$PY" -I ../tools/tv.py 'input keyevent KEYCODE_HOME' >/dev/null
 if ! healthy home; then
@@ -173,10 +186,8 @@ ARMED=0
 #                         app; Google TV needs this once the stock launcher is gone (InputKeyService)
 #   HOME_KEY_SERVICE=1    remotes whose Home button sends KEYCODE_ALL_APPS instead of HOME, e.g. Xiaomi
 #                         sticks: the key is routed to the launcher (HomeKeyService)
-enable_service() {   # appends to enabled_accessibility_services without dropping other services
-  svc=com.gathin.tvhome/.$1
-  "$PY" -I ../tools/tv.py "s=\$(settings get secure enabled_accessibility_services); case \"\$s\" in *$1*) ;; null|'') settings put secure enabled_accessibility_services $svc ;; *) settings put secure enabled_accessibility_services \"\$s:$svc\" ;; esac; settings put secure accessibility_enabled 1; echo $1 enabled"
-}
+#   KEEP_STOCK_HOME=1     the stock launcher stays the system's Home and HomeKeyService opens Glass TV
+#                         over it (enabled above); pressing Home twice quickly shows the stock home screen
 if [ "${INPUT_KEY_SERVICE:-0}" = 1 ]; then enable_service InputKeyService; fi
-if [ "${HOME_KEY_SERVICE:-0}" = 1 ]; then enable_service HomeKeyService; fi
+if [ "${HOME_KEY_SERVICE:-0}" = 1 ] && [ "${KEEP_STOCK_HOME:-0}" != 1 ]; then enable_service HomeKeyService; fi
 echo "Installed. Press Home on the remote to see it."

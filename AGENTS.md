@@ -172,7 +172,10 @@ Written so that any model can follow it to the letter:
   launcher nor this one, after asking (on Xiaomi the factory test app `com.duokan.factorytest`), or the Home
   button can land on it.
 - On Google TV the setup wizard (`com.google.android.tungsten.setupwraith`) can take Home; see the
-  troubleshooting guide.
+  troubleshooting guide. An update can also re-enable it after you disabled it, and on some TVs that
+  reboots the TV on every Home press (Panasonic 4KTV-3MUP). Where the model's notes say so, install with
+  `-KeepStockHome` (`KEEP_STOCK_HOME=1`) instead: the stock launcher stays Home, nothing is disabled, and
+  Glass TV opens over it.
 - After the stock launcher is gone, its recommendation services (`tvrecommendations`, `leanbacklauncher*`)
   can be disabled too.
 - **Check**: the script prints `Home now resolves to com.gathin.tvhome/…` and ends with `Installed. Press Home

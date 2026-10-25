@@ -87,6 +87,14 @@ fails on purpose and the rollback is printed instead of run.
   android.display`, and the main log shows `setupwraith/.RecoveryActivity` being started every
   200 ms or so. If you're already in the loop:
   `tools/tv.py 'pm enable --user 0 com.google.android.apps.tv.launcherx'`.
+- **Home reboots the TV to the maker's logo days after the install**, seen on Google TV 14 (Panasonic
+  4KTV-3MUP): an update re-enabled `setupwraith`, which took Home back and crashed the system on every Home
+  press. Inputs and the remote's app buttons still work. Look for the TV on the network first: after reboots
+  it may have a new IP, and network debugging is usually still on (`arp -a`, then try port 5555 on each
+  address). Then `pm enable --user 0 com.google.android.apps.tv.launcherx` and
+  `cmd package set-home-activity --user 0 com.google.android.apps.tv.launcherx/.home.HomeActivity`.
+  To keep Glass TV without that risk, install it with `-KeepStockHome` (`KEEP_STOCK_HOME=1`): the stock
+  launcher stays the system's Home, nothing is disabled, and Glass TV opens over it on Home and after boot.
 - **No on-screen keyboard** after switching launchers, seen on Xiaomi: the default input method
   pointed at a Baidu keyboard that isn't installed. Fix:
   `tools/tv.py 'ime set com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME'`
