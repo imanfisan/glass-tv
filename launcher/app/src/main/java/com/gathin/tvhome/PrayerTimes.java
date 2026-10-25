@@ -91,6 +91,14 @@ final class PrayerTimes {
         return -1;
     }
 
+    /** Time until the next prayer: "lagi 23 min", "lagi 1 j 5 min", "lagi 2 j"; "masuk waktu" at 0. */
+    static String left(int minutes) {
+        if (minutes <= 0) return "masuk waktu";
+        int h = minutes / 60, m = minutes % 60;
+        if (h == 0) return "lagi " + m + " min";
+        return "lagi " + h + " j" + (m > 0 ? " " + m + " min" : "");
+    }
+
     /** "5:42" or "17:42". */
     static String format(int minutes, boolean h24) {
         int h = minutes / 60 % 24, m = minutes % 60;

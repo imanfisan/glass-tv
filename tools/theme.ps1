@@ -19,9 +19,16 @@ $py = 'venv\Scripts\python.exe'
 if (-not (Test-Path $py)) { throw 'run: python -m venv tools\venv; tools\venv\Scripts\python.exe -m pip install -r tools\requirements.txt' }
 $pkg = 'com.gathin.tvhome'
 $dir = "/sdcard/Android/data/$pkg/files"
+# Restarts the launcher. Android drops a force-stopped app from the enabled accessibility services
+# (HomeKeyService, InputKeyService), so the list is saved and put back. Sent on stdin: PowerShell 5.1
+# drops the inner double quotes from native arguments.
+function Restart-Launcher([string]$Word) {
+    ('s=$(settings get secure enabled_accessibility_services); am force-stop ' + $pkg + '; am start -n ' + $pkg + '/.MainActivity >/dev/null; case "$s" in *' + $pkg + '*) settings put secure enabled_accessibility_services "$s"; settings put secure accessibility_enabled 1 ;; esac; echo ' + $Word) | & $py -I tv.py --batch | Select-Object -Last 1
+}
 
 if ($Reset) {
-    & $py -I tv.py "rm -rf $dir/config.json $dir/wallpaper.jpg $dir/wallpapers $dir/prayer_times.json; am force-stop $pkg; am start -n $pkg/.MainActivity >/dev/null; echo reset"
+    & $py -I tv.py "rm -rf $dir/config.json $dir/wallpaper.jpg $dir/wallpapers $dir/prayer_times.json" | Out-Null
+    Restart-Launcher 'reset'
     exit 0
 }
 if (-not $Theme) { throw 'usage: theme.ps1 <theme folder> | -Reset' }
@@ -45,5 +52,5 @@ if (Test-Path $walls -PathType Container) {
 # JAKIM's prayer times for the year (tools\esolat.py), shown in a card under the clock.
 $prayer = Join-Path $Theme 'prayer_times.json'
 if (Test-Path $prayer) { & $py -I b64push.py $prayer "$dir/prayer_times.json" | Select-Object -Last 1 } else { & $py -I tv.py "rm -f $dir/prayer_times.json" | Out-Null }
-& $py -I tv.py "am force-stop $pkg; am start -n $pkg/.MainActivity >/dev/null; echo applied"
+Restart-Launcher 'applied'
 Write-Host "Theme $(Split-Path $Theme -Leaf) is on the TV. Undo with: tools\theme.ps1 -TvHost $TvHost -Reset"

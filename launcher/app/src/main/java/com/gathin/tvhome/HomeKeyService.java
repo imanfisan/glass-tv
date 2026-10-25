@@ -34,6 +34,9 @@ public class HomeKeyService extends AccessibilityService {
             "com.google.android.apps.tv.launcherx.home.HomeActivity",
             "com.google.android.tvlauncher.MainActivity",
             "com.google.android.leanbacklauncher.MainActivity"));
+    private static final java.util.Set<String> STOCK_PACKAGES = new java.util.HashSet<>(java.util.Arrays.asList(
+            "com.google.android.apps.tv.launcherx", "com.google.android.tvlauncher",
+            "com.google.android.leanbacklauncher"));
 
     /** Scancodes of remote buttons that should open Settings (config.xml, settings_key_scancodes). */
     private int[] settingsScancodes = new int[0];
@@ -41,6 +44,17 @@ public class HomeKeyService extends AccessibilityService {
     /** This launcher could not be started: Home goes to the system until it can. */
     private boolean failed;
     private long lastBounce;
+    /** When one of the stock launcher's other screens (Settings panel, PIN prompt) last opened. */
+    private long lastStockScreen;
+    /**
+     * Set by MainActivity (same process): whether it is resumed, and when it last paused. Window events can
+     * arrive out of order (an app closing reports after this launcher is back), so they are not used for this.
+     */
+    static volatile boolean inFront;
+    static volatile long leftFrontAt;
+    private static final String DASHBOARD = "com.google.android.apps.tv.launcherx.dashboard.";
+    /** When Android's Settings was last opened for the Settings button (DashboardHandler and DashboardActivity both report). */
+    private long lastSettings;
 
     @Override
     protected void onServiceConnected() {
@@ -101,14 +115,42 @@ public class HomeKeyService extends AccessibilityService {
      * Some TVs (Panasonic 4KTV-3MUP) handle Home before accessibility services see it, so the stock home
      * screen comes up anyway. Bring this launcher over it as soon as it shows; if it shows again within
      * STAY_MS of that (Home pressed again), leave it: that is the way to the stock home screen.
+     * The stock launcher's other screens (Google TV's Settings panel, its PIN prompt) bring its home screen
+     * up behind them; for STAY_MS after one of those opens, its home screen is left alone too.
      */
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
         if (event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
-        CharSequence cls = event.getClassName();
-        if (cls == null || !STOCK_HOMES.contains(cls.toString())) return;
+        CharSequence cls = event.getClassName(), pkg = event.getPackageName();
+        if (cls == null || pkg == null) return;
         long now = SystemClock.uptimeMillis();
-        if (now - lastBounce < STAY_MS) return;
+        if (!STOCK_PACKAGES.contains(pkg.toString())) return;
+        // Plain views (android.widget.FrameLayout) also report window changes, right before the home screen
+        // itself; only the launcher's own screens (its Settings panel, PIN prompt) count as other screens.
+        if (cls.toString().startsWith("android.")) return;
+        if (!STOCK_HOMES.contains(cls.toString())) {
+            lastStockScreen = now;
+            // The remote's Settings button goes to Google TV's own panel, which only opens over Google TV and
+            // closes again over any other app. Over this launcher (in front, or just covered by the panel),
+            // open Android's Settings instead.
+            boolean overThis = inFront || now - leftFrontAt < 1500;
+            if (overThis && cls.toString().startsWith(DASHBOARD) && now - lastSettings > 1500) {
+                lastSettings = now;
+                // Back over this launcher first, which closes the panel (it only stays over Google TV), so Back
+                // from Settings returns here rather than to the panel.
+                lastBounce = now;
+                openHome();
+                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                    try {
+                        startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                    } catch (RuntimeException ignored) {
+                        // No Settings app: the stock panel's own behaviour stands.
+                    }
+                }, 400);
+            }
+            return;
+        }
+        if (now - lastBounce < STAY_MS || now - lastStockScreen < STAY_MS) return;
         lastBounce = now;
         openHome();
     }

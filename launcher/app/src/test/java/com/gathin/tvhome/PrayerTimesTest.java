@@ -33,6 +33,16 @@ public class PrayerTimesTest {
     }
 
     @Test
+    public void timeLeft() {
+        assertEquals("lagi 1 min", PrayerTimes.left(1));
+        assertEquals("lagi 23 min", PrayerTimes.left(23));
+        assertEquals("lagi 1 j", PrayerTimes.left(60));
+        assertEquals("lagi 1 j 5 min", PrayerTimes.left(65));
+        assertEquals("lagi 8 j 30 min", PrayerTimes.left(510));
+        assertEquals("masuk waktu", PrayerTimes.left(0));
+    }
+
+    @Test
     public void formats() {
         assertEquals("5:07", PrayerTimes.format(307, true));
         assertEquals("17:42", PrayerTimes.format(1062, true));

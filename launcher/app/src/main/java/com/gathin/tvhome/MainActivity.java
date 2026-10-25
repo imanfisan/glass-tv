@@ -131,7 +131,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean shamsi;
     private android.widget.LinearLayout prayerCard;
     private PrayerTimes prayerTimes;
-    private final TextView[][] prayerCells = new TextView[PrayerTimes.NAMES.length][2];
+    private final TextView[][] prayerCells = new TextView[PrayerTimes.NAMES.length][3];
     private String vpnApp;
     private SpringAnimation springX, springY;
     private float glassTargetX, glassTargetY;
@@ -237,7 +237,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             updatePrayerTimes();
             updateWifiLabel();
             refreshPlacesIfDue();
-            handler.postDelayed(this, MINUTE_MS);
+            handler.postDelayed(this, untilNextMinute());
         }
     };
 
@@ -666,6 +666,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onResume() {
         super.onResume();
+        HomeKeyService.inFront = true;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(packageReceiver, packageFilter, Context.RECEIVER_NOT_EXPORTED);
         } else {
@@ -680,7 +681,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         updateWifiLabel();
         updateInputsButton();
         startWallpaperRotation();
-        handler.postDelayed(minuteTick, MINUTE_MS);
+        handler.postDelayed(minuteTick, untilNextMinute());
         handler.removeCallbacks(cacheClean);
         handler.postDelayed(cacheClean, CacheCleaner.IDLE_MS);
         hiddenSinceResume = false;
@@ -765,6 +766,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onPause() {
         super.onPause();
+        HomeKeyService.inFront = false;
+        HomeKeyService.leftFrontAt = android.os.SystemClock.uptimeMillis();
         unregisterReceiver(packageReceiver);
         handler.removeCallbacks(minuteTick);
         handler.removeCallbacks(wallTick);
@@ -1479,14 +1482,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             col.setOrientation(android.widget.LinearLayout.VERTICAL);
             col.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
             col.setPadding((int) (16 * density), (int) (8 * density), (int) (16 * density), (int) (9 * density));
-            TextView name = new TextView(this), time = new TextView(this);
+            TextView name = new TextView(this), time = new TextView(this), left = new TextView(this);
             name.setText(PrayerTimes.NAMES[i]);
             name.setTextSize(11f);
             name.setLetterSpacing(0.12f);
             name.setAllCaps(true);
             time.setTextSize(22f);
             time.setPadding(0, (int) (3 * density), 0, 0);
-            for (TextView t : new TextView[]{name, time}) {
+            // "lagi 23 min" under the next prayer; empty, not gone, elsewhere so the columns keep one height.
+            left.setTextSize(11f);
+            left.setPadding(0, (int) (4 * density), 0, 0);
+            left.setTextColor(0xE6FFFFFF);
+            for (TextView t : new TextView[]{name, time, left}) {
                 t.setTypeface(outfit);
                 t.setIncludeFontPadding(false);
                 t.setSingleLine(true);
@@ -1495,9 +1502,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             name.setFontVariationSettings("'wght' 500");
             prayerCells[i][0] = name;
             prayerCells[i][1] = time;
+            prayerCells[i][2] = left;
             prayerCard.addView(col);
         }
         prayerCard.setVisibility(View.VISIBLE);
+    }
+
+    /** Milliseconds to just past the clock's next minute, so the minute tick changes with the clock. */
+    private static long untilNextMinute() {
+        return MINUTE_MS - System.currentTimeMillis() % MINUTE_MS + 200;
     }
 
     /** Today's JAKIM times, the next prayer lit; the card hides on a day the file does not cover. */
@@ -1507,10 +1520,25 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         int[] t = prayerTimes.on(now);
         prayerCard.setVisibility(t == null ? View.GONE : View.VISIBLE);
         if (t == null) return;
-        int next = PrayerTimes.next(t, now.get(java.util.Calendar.HOUR_OF_DAY) * 60 + now.get(java.util.Calendar.MINUTE));
+        int nowMin = now.get(java.util.Calendar.HOUR_OF_DAY) * 60 + now.get(java.util.Calendar.MINUTE);
+        int next = PrayerTimes.next(t, nowMin);
+        int nextAt = next >= 0 ? t[next] : -1;
+        if (next < 0) {
+            // After Isyak: count down to tomorrow's Subuh, shown in the Subuh column.
+            java.util.Calendar tomorrow = (java.util.Calendar) now.clone();
+            tomorrow.add(java.util.Calendar.DAY_OF_MONTH, 1);
+            int[] t2 = prayerTimes.on(tomorrow);
+            if (t2 != null) {
+                t = t.clone();
+                t[0] = t2[0];
+                next = 0;
+                nextAt = t2[0] + 24 * 60;
+            }
+        }
         boolean h24 = android.text.format.DateFormat.is24HourFormat(this);
         for (int i = 0; i < t.length; i++) {
             boolean lit = i == next;
+            prayerCells[i][2].setText(lit ? PrayerTimes.left(nextAt - nowMin) : "");
             View col = (View) prayerCells[i][0].getParent();
             col.setBackground(lit ? nextPrayerBackground() : null);
             prayerCells[i][0].setTextColor(lit ? 0xFFFFFFFF : 0x99FFFFFF);

@@ -17,10 +17,12 @@ PY=venv/bin/python
 export MSYS_NO_PATHCONV=1
 PKG=com.gathin.tvhome
 DIR=/sdcard/Android/data/$PKG/files
+# Android drops a force-stopped app from the enabled accessibility services (HomeKeyService,
+# InputKeyService), so each restart below saves that list and puts it back.
 tv() { "$PY" -I tv.py "$@"; }
 
 if [ "${1:-}" = --reset ]; then
-  tv "rm -rf $DIR/config.json $DIR/wallpaper.jpg $DIR/wallpapers $DIR/prayer_times.json; am force-stop $PKG; am start -n $PKG/.MainActivity >/dev/null; echo reset" | tail -n 1
+  tv "rm -rf $DIR/config.json $DIR/wallpaper.jpg $DIR/wallpapers $DIR/prayer_times.json; s=\$(settings get secure enabled_accessibility_services); am force-stop $PKG; am start -n $PKG/.MainActivity >/dev/null; case \"\$s\" in *$PKG*) settings put secure enabled_accessibility_services \"\$s\"; settings put secure accessibility_enabled 1 ;; esac; echo reset" | tail -n 1
   exit 0
 fi
 THEME="${THEME_ARG:?usage: theme.sh <theme folder> | --reset}"
@@ -50,5 +52,5 @@ if [ -f "$THEME/prayer_times.json" ]; then
 else
   tv "rm -f $DIR/prayer_times.json" >/dev/null
 fi
-tv "am force-stop $PKG; am start -n $PKG/.MainActivity >/dev/null; echo applied" | tail -n 1
+tv "s=\$(settings get secure enabled_accessibility_services); am force-stop $PKG; am start -n $PKG/.MainActivity >/dev/null; case \"\$s\" in *$PKG*) settings put secure enabled_accessibility_services \"\$s\"; settings put secure accessibility_enabled 1 ;; esac; echo applied" | tail -n 1
 echo "Theme $(basename "$THEME") is on the TV. Undo with: tools/theme.sh --reset"
